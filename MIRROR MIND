@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VisionAI - Real-time Behavior Analysis</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- face-api.js for in-browser emotion detection -->
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <style>
+        /* Custom Inter font */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Breathing animation */
+        /* Removed .breather-circle and @keyframes breathe */
+        
+        /* Ensure video and canvas are sized correctly */
+        #video-container {
+            position: relative;
+            width: 100%;
+            max-width: 720px;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        
+        #video, #canvas {
+            width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-500">
+                VisionAI Behavior Analysis
+            </h1>
+            <p class="text-lg text-gray-400 mt-2">Real-time emotional state and behavior tracking.</p>
+        </header>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <!-- Column 1: Video Feed & Controls -->
+            <div class="flex flex-col items-center bg-gray-800 p-6 rounded-lg shadow-xl">
+                <h2 class="text-2xl font-semibold mb-4 text-center">Your Reflection</h2>
+                
+                <!-- Loading & Error Messages -->
+                <div id="message-box" class="mb-4 p-4 rounded-lg text-center hidden"></div>
+                
+                <!-- Video Container -->
+                <div id="video-container" class="bg-gray-700">
+                    <video id="video" autoplay muted playsinline></video>
+                    <canvas id="canvas"></canvas>
+                </div>
+
+                <!-- Control Button -->
+                <button id="startButton" class="mt-6 w-full max-w-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+                    Start Mirror
+                </button>
+            </div>
+
+            <!-- Column 2: Dashboard -->
+            <div class="bg-gray-800 p-6 rounded-lg shadow-xl space-y-6">
+                
+                <!-- Detected Mood -->
+                <div class="text-center bg-gray-700 p-4 rounded-lg">
+                    <h3 class="text-sm font-medium text-gray-400 uppercase tracking-wider">Dominant Emotion</h3>
+                    <p id="moodText" class="text-3xl font-bold text-indigo-400 capitalize transition-all duration-300 flex items-center justify-center">
+                        <span id="moodEmoji" class="mr-2"></span>
+                        <span id="moodLabel">...</span>
+                    </p>
+                </div>
+                
+                <!-- Emotion Analysis -->
+                <div class="bg-gray-700 p-6 rounded-lg">
+                    <h3 class="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">Full Emotion Scores</h3>
+                    <div id="emotion-scores" class="space-y-3 text-lg">
+                        <div class="flex justify-between"><span>😊 Happy:</span> <span id="score-happy" class="font-medium text-indigo-300 w-20 text-right">...</span></div>
+                        <div class="flex justify-between"><span>😢 Sad:</span> <span id="score-sad" class="font-medium text-indigo-300 w-20 text-right">...</span></div>
+                        <div class="flex justify-between"><span>😠 Angry:</span> <span id="score-angry" class="font-medium text-indigo-300 w-20 text-right">...</span></div>
+                        <div class="flex justify-between"><span>😮 Surprised:</span> <span id="score-surprised" class="font-medium text-indigo-300 w-20 text-right">...</span></div>
+                        <div class="flex justify-between"><span>😨 Fearful:</span> <span id="score-fearful" class="font-medium text-indigo-300 w-20 text-right">...</span></div>
+                        <div class="flex justify-between"><span>🤢 Disgusted:</span> <span id="score-disgusted" class="font-medium text-indigo-300 w-20 text-right">...</span></div>
+                        <div class="flex justify-between"><span>😐 Neutral:</span> <span id="score-neutral" class="font-medium text-indigo-300 w-20 text-right">...</span></div>
+                    </div>
+                </div>
+
+                <!-- Breathing Animation -->
+                <!-- Removed breathing guide HTML block -->
+
+                <!-- Spotify Player -->
+                <!-- Removed Spotify Player block -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const startButton = document.getElementById('startButton');
+        const messageBox = document.getElementById('message-box');
+        const moodEmoji = document.getElementById('moodEmoji');
+        const moodLabel = document.getElementById('moodLabel');
+        
+        // Removed insightText and spotifyPlayer
+        
+        // Added new score elements
+        const scoreHappy = document.getElementById('score-happy');
+        const scoreSad = document.getElementById('score-sad');
+        const scoreAngry = document.getElementById('score-angry');
+        const scoreSurprised = document.getElementById('score-surprised');
+        const scoreFearful = document.getElementById('score-fearful');
+        const scoreDisgusted = document.getElementById('score-disgusted');
+        const scoreNeutral = document.getElementById('score-neutral');
+
+        // --- State Variables ---
+        let currentMood = 'neutral';
+        let detectionInterval;
+
+        // --- Content Stores ---
+        
+        // 1. Affirmations and Quotes
+        // Removed contentStore
+        
+        // 2. Spotify Playlists (using public embed links)
+        // Removed playlistStore
+        
+        // 3. Emoji Store
+        const emojiStore = {
+            happy: "😊",
+            sad: "😢",
+            angry: "😠",
+            neutral: "😐",
+            surprised: "😮",
+            fearful: "😨",
+            disgusted: "🤢"
+        };
+
+        // --- Helper Functions ---
+
+        /**
+         * Shows a message to the user.
+         * @param {string} text - The message to display.
+         * @param {string} type - 'info', 'success', or 'error'.
+         */
+        function showMessage(text, type = 'info') {
+            messageBox.textContent = text;
+            messageBox.classList.remove('hidden', 'bg-blue-200', 'text-blue-800', 'bg-red-200', 'text-red-800', 'bg-green-200', 'text-green-800');
+            if (type === 'error') {
+                messageBox.classList.add('bg-red-200', 'text-red-800');
+            } else if (type === 'success') {
+                messageBox.classList.add('bg-green-200', 'text-green-800');
+            } else {
+                messageBox.classList.add('bg-blue-200', 'text-blue-800');
+            }
+            messageBox.classList.remove('hidden');
+        }
+
+        /**
+         * Loads the face-api.js models
+         */
+        async function loadModels() {
+            // Changed to a more reliable model hosting URL
+            const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+            try {
+                showMessage('Loading wellness models... This may take a moment.');
+                await Promise.all([
+                    faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL), // Use SsdMobilenetv1
+                    faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL), // Swapped to tiny model
+                    faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL)
+                ]);
+                showMessage('Models loaded. Ready to start!', 'success');
+                return true; // Indicate success
+            } catch (error) {
+                console.error('Error loading models:', error);
+                showMessage('Failed to load models. Please refresh the page.', 'error');
+                return false; // Indicate failure
+            }
+        }
+ 
+        /**
+         * Starts the webcam feed.
+         */
+        async function startWebcam() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
+                video.srcObject = stream;
+                return new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        resolve(true); // Indicate success
+                    };
+                });
+            } catch (error) {
+                console.error('Error accessing webcam:', error);
+                showMessage('Could not access webcam. Please grant permission.', 'error');
+                return false; // Indicate failure
+            }
+        }
+ 
+        /**
+         * Gets a random item from an array.
+         * @param {Array<string>} arr - The array to pick from.
+         */
+        function getRandomInsight(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+
+        /**
+         * Updates the dashboard (mood, insight, Spotify) based on the detected emotion.
+         * @param {string} emotion - The detected emotion.
+         */
+        function updateDashboard(emotion) {
+            if (emotion === '...') {
+                moodLabel.textContent = '...';
+                moodEmoji.textContent = '...';
+                currentMood = '...';
+                return;
+            }
+
+            if (emotion === currentMood) return; // No change, do nothing.
+            
+            currentMood = emotion;
+
+            // 1. Update Mood Text & Emoji
+            moodLabel.textContent = emotion;
+            moodEmoji.textContent = emojiStore[emotion] || emojiStore.neutral;
+
+            // 2. Update Insight Text (Removed)
+            
+            // 3. Update Spotify Player (Removed)
+        }
+
+        /**
+         * Updates the detailed emotion score list.
+         * @param {object | null} expressions - The expressions object from face-api or null.
+         */
+        function updateEmotionScores(expressions) {
+            if (!expressions) {
+                // Reset scores if no face is detected
+                scoreHappy.textContent = '...';
+                scoreSad.textContent = '...';
+                scoreAngry.textContent = '...';
+                scoreSurprised.textContent = '...';
+                scoreFearful.textContent = '...';
+                scoreDisgusted.textContent = '...';
+                scoreNeutral.textContent = '...';
+                return;
+            }
+            
+            // Format scores as percentages
+            scoreHappy.textContent = `${(expressions.happy * 100).toFixed(1)}%`;
+            scoreSad.textContent = `${(expressions.sad * 100).toFixed(1)}%`;
+            scoreAngry.textContent = `${(expressions.angry * 100).toFixed(1)}%`;
+            scoreSurprised.textContent = `${(expressions.surprised * 100).toFixed(1)}%`;
+            scoreFearful.textContent = `${(expressions.fearful * 100).toFixed(1)}%`;
+            scoreDisgusted.textContent = `${(expressions.disgusted * 100).toFixed(1)}%`;
+            scoreNeutral.textContent = `${(expressions.neutral * 100).toFixed(1)}%`;
+        }
+
+        /**
+         * Starts the emotion detection loop.
+         */
+        async function runDetection() {
+            if (!video.srcObject) return;
+
+            // Set canvas size to match video
+            const displaySize = { width: video.clientWidth, height: video.clientHeight };
+            faceapi.matchDimensions(canvas, displaySize);
+            
+            // Clear previous interval if exists
+            if (detectionInterval) {
+                clearInterval(detectionInterval);
+            }
+
+            detectionInterval = setInterval(async () => {
+                if (!video.srcObject) return; // Stop if webcam stream is gone
+                
+                const detections = await faceapi.detectAllFaces(video, new faceapi.SsdMobilenetv1Options()) // Use SsdMobilenetv1
+                    .withFaceLandmarks(true) // Use the T_I_N_Y model: .withFaceLandmarks(true)
+                    .withFaceExpressions();
+
+                // Clear canvas
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                if (detections && detections.length > 0) {
+                    const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                    
+                    // Draw detection box
+                    faceapi.draw.drawDetections(canvas, resizedDetections);
+                    // Draw landmarks
+                    faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+                    // Draw expressions
+                    // faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
+
+                    // Find the dominant emotion
+                    const expressions = resizedDetections[0].expressions;
+                    const dominantEmotion = Object.keys(expressions).reduce((a, b) => expressions[a] > expressions[b] ? a : b);
+                    
+                    updateDashboard(dominantEmotion);
+                    updateEmotionScores(expressions); // Update detailed scores
+
+                } else {
+                    // If no face is detected, reset
+                    updateDashboard('...');
+                    updateEmotionScores(null); // Reset scores
+                }
+            }, 500); // Check for emotion every 500ms
+        }
+
+        // --- Event Listeners ---
+        startButton.addEventListener('click', async () => {
+            startButton.disabled = true;
+            startButton.textContent = 'Starting...';
+ 
+            // Load models first
+            const modelsLoaded = await loadModels();
+            
+            // If models failed to load, stop here and re-enable the button
+            if (!modelsLoaded) {
+                startButton.disabled = false;
+                startButton.textContent = 'Start Mirror';
+                return; // Stop execution
+            }
+            
+            // Then start webcam
+            const webcamStarted = await startWebcam();
+            
+            // If webcam failed, stop here
+            if (!webcamStarted) {
+                startButton.disabled = false;
+                startButton.textContent = 'Start Mirror';
+                return;
+            }
+            
+            // Both models and webcam are ready
+            video.style.display = 'block';
+            canvas.style.display = 'block';
+            showMessage('Webcam active. Look at the camera!', 'success');
+            startButton.classList.add('hidden'); // Hide the start button
+            runDetection();
+        });
+        
+        // Hide video until started
+        video.style.display = 'none';
+        canvas.style.display = 'none';
+
+    </script>
+</body>
+</html>
